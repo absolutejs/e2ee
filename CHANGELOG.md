@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Require security-mode transitions to create a new conversation instead of
+  allowing a provider to relabel existing MLS group state in place.
+
 ## 0.2.0
 
 - Add MLS device credential and KeyPackage contracts.

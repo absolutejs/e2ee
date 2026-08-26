@@ -236,7 +236,6 @@ export type MessagingSession = {
   process(
     message: ProtectedMessage,
   ): Promise<MessagingProcessResult | undefined>;
-  reinitialize(securityMode: SecurityMode): Promise<MembershipChange>;
   removeMembers(deviceIds: readonly string[]): Promise<MembershipChange>;
   selfUpdate(): Promise<MembershipChange>;
 };

@@ -63,6 +63,10 @@ engine cannot silently become the identity authority, transport, or recovery
 authority. Strict E2EE never receives a `RecoveryAuthority`; managed recovery
 must identify and configure one explicitly.
 
+Changing modes is not a session mutation. Call
+`planSecurityModeTransition()`, create a new conversation in the requested
+mode, re-add verified devices, and visibly retire the prior conversation.
+
 Public TypeScript contracts use type aliases rather than interfaces so unions,
 intersections, and provider capability composition stay explicit.
 
