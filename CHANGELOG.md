@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Add fail-closed independent-audit evidence bound to exact package versions,
+  report digests, auditor identities, finding severity, and validity windows.
+- Let deployment policy restrict acceptance to an explicit auditor allowlist.
+
 ## 0.4.0
 
 - Bind Authentication Service validation to the MLS signature public key.

@@ -10,3 +10,7 @@ impact. Do not include real credentials, private keys, or user content.
 
 Only the latest published `0.x` minor is supported during initial development.
 That policy will be expanded before a stable security claim is made.
+
+Audit metadata is admission evidence, not a cryptographic proof of auditor
+independence. Production deployments must maintain a reviewed auditor allowlist,
+verify the published report digest, and reject expired or out-of-scope reports.

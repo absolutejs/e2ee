@@ -7,6 +7,7 @@ export const E2EE_CERTIFICATION_SUITE = "absolutejs-e2ee-certification/1";
 export type E2EECertificationClaim =
   | "adversarial-lifecycle"
   | "cross-implementation"
+  | "independent-audit"
   | "known-answer-vectors"
   | "provider-conformance"
   | "runtime-browser"
@@ -23,7 +24,29 @@ export type E2EECertificationVectorEvidence = {
   readonly sourceUrl: string;
 };
 
+export type E2EEAuditScope = {
+  readonly packageName: string;
+  readonly version: string;
+};
+
+export type E2EEIndependentAuditEvidence = {
+  readonly auditor: {
+    readonly id: string;
+    readonly name: string;
+  };
+  readonly completedAt: string;
+  readonly findings: {
+    readonly unresolvedCritical: number;
+    readonly unresolvedHigh: number;
+  };
+  readonly reportDigestSha256: string;
+  readonly reportUrl: string;
+  readonly scope: readonly E2EEAuditScope[];
+  readonly validUntil: string;
+};
+
 export type E2EECertificationReport = {
+  readonly audits?: readonly E2EEIndependentAuditEvidence[];
   readonly claims: readonly E2EECertificationClaim[];
   readonly completedAt: string;
   readonly contract: typeof E2EE_CERTIFICATION_CONTRACT;
@@ -46,6 +69,7 @@ export type E2EECertificationPolicy = {
   readonly now?: Date;
   readonly requiredClaims: readonly E2EECertificationClaim[];
   readonly runtime: E2EERuntime;
+  readonly trustedAuditorIds?: readonly string[];
 };
 
 export type E2EECertificationResult = {
@@ -63,11 +87,42 @@ const unique = (values: readonly string[]) =>
 
 const nonEmpty = (value: string) => value.trim().length > 0;
 
+const auditCoversProvider = (
+  audit: E2EEIndependentAuditEvidence,
+  provider: E2EECertificationReport["provider"],
+): boolean =>
+  audit.scope.some(
+    ({ packageName, version }) =>
+      packageName === provider.packageName && version === provider.version,
+  );
+
+const auditHasNoBlockingFindings = (
+  audit: E2EEIndependentAuditEvidence,
+): boolean =>
+  audit.findings.unresolvedCritical === 0 &&
+  audit.findings.unresolvedHigh === 0;
+
 const freezeReport = (
   report: E2EECertificationReport,
 ): E2EECertificationReport =>
   Object.freeze({
     ...report,
+    ...(report.audits === undefined
+      ? {}
+      : {
+          audits: Object.freeze(
+            report.audits.map((audit) =>
+              Object.freeze({
+                ...audit,
+                auditor: Object.freeze({ ...audit.auditor }),
+                findings: Object.freeze({ ...audit.findings }),
+                scope: Object.freeze(
+                  audit.scope.map((entry) => Object.freeze({ ...entry })),
+                ),
+              }),
+            ),
+          ),
+        }),
     claims: Object.freeze([...report.claims]),
     implementations: Object.freeze(
       report.implementations.map((implementation) =>
@@ -132,6 +187,38 @@ export const defineE2EECertificationReport = (
     throw new E2EEConfigurationError(
       "Certification vectors require an HTTPS source and SHA-256 digest.",
     );
+  const audits = report.audits ?? [];
+  for (const audit of audits) {
+    if (
+      !nonEmpty(audit.auditor.id) ||
+      !nonEmpty(audit.auditor.name) ||
+      audit.auditor.id === report.provider.packageName ||
+      !SHA256_PATTERN.test(audit.reportDigestSha256) ||
+      !HTTPS_URL_PATTERN.test(audit.reportUrl) ||
+      !Number.isFinite(Date.parse(audit.completedAt)) ||
+      !Number.isFinite(Date.parse(audit.validUntil)) ||
+      Date.parse(audit.validUntil) <= Date.parse(audit.completedAt) ||
+      Date.parse(audit.completedAt) >
+        Date.parse(report.completedAt) + MAXIMUM_CLOCK_SKEW_MS ||
+      audit.scope.length === 0 ||
+      !unique(
+        audit.scope.map(
+          ({ packageName, version }) => `${packageName}@${version}`,
+        ),
+      ) ||
+      audit.scope.some(
+        ({ packageName, version }) =>
+          !nonEmpty(packageName) || !nonEmpty(version),
+      ) ||
+      !Number.isSafeInteger(audit.findings.unresolvedCritical) ||
+      audit.findings.unresolvedCritical < 0 ||
+      !Number.isSafeInteger(audit.findings.unresolvedHigh) ||
+      audit.findings.unresolvedHigh < 0
+    )
+      throw new E2EEConfigurationError(
+        "Independent audit evidence is malformed or not release-bound.",
+      );
+  }
   if (
     report.claims.includes("known-answer-vectors") &&
     report.vectors.length === 0
@@ -145,6 +232,17 @@ export const defineE2EECertificationReport = (
   )
     throw new E2EEConfigurationError(
       "Cross-implementation certification requires two distinct implementations.",
+    );
+  if (
+    report.claims.includes("independent-audit") &&
+    !audits.some(
+      (audit) =>
+        auditCoversProvider(audit, report.provider) &&
+        auditHasNoBlockingFindings(audit),
+    )
+  )
+    throw new E2EEConfigurationError(
+      "Independent-audit certification requires exact provider scope and no unresolved critical or high findings.",
     );
 
   return freezeReport(report);
@@ -177,6 +275,23 @@ export const checkE2EECertification = (
   for (const claim of policy.requiredClaims)
     if (!defined.claims.includes(claim))
       issues.push(`certification claim ${claim} is missing`);
+  if (policy.requiredClaims.includes("independent-audit")) {
+    const currentAudits = (defined.audits ?? []).filter(
+      (audit) =>
+        auditCoversProvider(audit, defined.provider) &&
+        auditHasNoBlockingFindings(audit) &&
+        new Date(audit.validUntil).getTime() >= now.getTime(),
+    );
+    if (currentAudits.length === 0)
+      issues.push("independent audit evidence is expired or out of scope");
+    else if (
+      policy.trustedAuditorIds !== undefined &&
+      !currentAudits.some((audit) =>
+        policy.trustedAuditorIds!.includes(audit.auditor.id),
+      )
+    )
+      issues.push("independent audit is not from a trusted auditor");
+  }
 
   return Object.freeze({
     issues: Object.freeze(issues),

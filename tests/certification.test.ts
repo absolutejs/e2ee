@@ -98,4 +98,79 @@ describe("E2EE provider certification", () => {
       ),
     ).toThrow("requires two distinct implementations");
   });
+
+  test("requires release-bound independent audit evidence", () => {
+    expect(() =>
+      defineE2EECertificationReport(report({ claims: ["independent-audit"] })),
+    ).toThrow("exact provider scope");
+    expect(() =>
+      defineE2EECertificationReport(
+        report({
+          audits: [
+            {
+              auditor: { id: "security-lab", name: "Security Lab" },
+              completedAt: "2026-08-25T12:00:00.000Z",
+              findings: { unresolvedCritical: 0, unresolvedHigh: 1 },
+              reportDigestSha256: "b".repeat(64),
+              reportUrl: "https://example.com/audit.pdf",
+              scope: [
+                {
+                  packageName: manifest.packageName,
+                  version: manifest.version,
+                },
+              ],
+              validUntil: "2027-08-25T12:00:00.000Z",
+            },
+          ],
+          claims: ["independent-audit"],
+        }),
+      ),
+    ).toThrow("no unresolved critical or high findings");
+  });
+
+  test("checks audit expiry and the deployment auditor allowlist", () => {
+    const audited = report({
+      audits: [
+        {
+          auditor: { id: "security-lab", name: "Security Lab" },
+          completedAt: "2026-08-25T12:00:00.000Z",
+          findings: { unresolvedCritical: 0, unresolvedHigh: 0 },
+          reportDigestSha256: "b".repeat(64),
+          reportUrl: "https://example.com/audit.pdf",
+          scope: [
+            {
+              packageName: manifest.packageName,
+              version: manifest.version,
+            },
+            { packageName: "ts-mls", version: "2.0.0-rc.16" },
+          ],
+          validUntil: "2026-09-25T12:00:00.000Z",
+        },
+      ],
+      claims: ["independent-audit"],
+    });
+    const allowed = checkE2EECertification(audited, {
+      manifest,
+      maximumAgeMs: 86_400_000,
+      now,
+      requiredClaims: ["independent-audit"],
+      runtime: "bun",
+      trustedAuditorIds: ["security-lab"],
+    });
+    const untrusted = checkE2EECertification(audited, {
+      manifest,
+      maximumAgeMs: 86_400_000,
+      now,
+      requiredClaims: ["independent-audit"],
+      runtime: "bun",
+      trustedAuditorIds: ["another-lab"],
+    });
+
+    expect(allowed.passed).toBe(true);
+    expect(Object.isFrozen(allowed.report.audits?.[0]?.scope)).toBe(true);
+    expect(untrusted.passed).toBe(false);
+    expect(untrusted.issues).toContain(
+      "independent audit is not from a trusted auditor",
+    );
+  });
 });

@@ -82,6 +82,13 @@ scenarios, implementation identities, vector sources, and an evidence digest.
 `checkE2EECertification()` rejects stale reports, reports for another release or
 runtime, and missing policy claims.
 
+An `independent-audit` claim additionally requires an HTTPS report and SHA-256
+digest, an exact package/version scope, an auditor identity, a future validity
+date, and zero unresolved critical or high findings. Deployments can set
+`trustedAuditorIds`; the library does not pretend that a provider's
+self-declaration proves reviewer independence. Any provider release or scoped
+engine change requires new audit evidence.
+
 The claims deliberately distinguish shared conformance, known-answer vectors, and
 cross-implementation testing. Passing the MLS Working Group vectors does not by
 itself prove application interoperability: RFC 9750 leaves Authentication Service,
