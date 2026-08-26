@@ -6,6 +6,7 @@ import type {
   E2EEProvider,
   E2EEProviderManifest,
   E2EEProviderRequirements,
+  MessagingProvider,
 } from "./types";
 
 export type ProviderConformanceOptions = {
@@ -17,6 +18,10 @@ export type ProviderConformanceResult = {
   readonly issues: readonly string[];
   readonly manifest?: E2EEProviderManifest;
   readonly passed: boolean;
+};
+
+export type MessagingProviderConformanceOptions = {
+  readonly createProvider: () => MessagingProvider | Promise<MessagingProvider>;
 };
 
 /**
@@ -57,6 +62,46 @@ export const checkE2EEProviderConformance = async (
     if (!compatibility.compatible) {
       issues.push(
         `declared supported requirement was rejected: ${compatibility.reasons.join(", ")}`,
+      );
+    }
+  }
+
+  return Object.freeze({
+    issues: Object.freeze(issues),
+    manifest,
+    passed: issues.length === 0,
+  });
+};
+
+export const checkMessagingProviderConformance = async (
+  options: MessagingProviderConformanceOptions,
+): Promise<ProviderConformanceResult> => {
+  const result = await checkE2EEProviderConformance({
+    createProvider: options.createProvider,
+    validRequirement: {
+      minimumAssurance: "experimental",
+      operatorCanDecrypt: false,
+      protocols: ["MLS-1.0"],
+      requireForwardSecrecy: true,
+      requirePostCompromiseSecurity: true,
+      roles: ["messaging"],
+      runtime: "bun",
+      securityMode: "strict-e2ee",
+    },
+  });
+  const issues = [...result.issues];
+  const manifest = result.manifest;
+
+  if (manifest !== undefined) {
+    if (!manifest.protocols.includes("MLS-1.0")) {
+      issues.push("messaging provider does not declare MLS-1.0");
+    }
+    if (!manifest.security.forwardSecrecy) {
+      issues.push("messaging provider does not declare forward secrecy");
+    }
+    if (!manifest.security.postCompromiseSecurity) {
+      issues.push(
+        "messaging provider does not declare post-compromise security",
       );
     }
   }

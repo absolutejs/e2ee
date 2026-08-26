@@ -4,6 +4,9 @@ import {
   E2EEConfigurationError,
   planSecurityModeTransition,
   validateAuthenticatedContext,
+  validateConversationState,
+  validateDeviceCredential,
+  validateKeyPackage,
 } from "../src";
 
 describe("security modes", () => {
@@ -26,6 +29,63 @@ describe("security modes", () => {
     expect(() =>
       planSecurityModeTransition("strict-e2ee", "strict-e2ee"),
     ).toThrow(E2EEConfigurationError);
+  });
+});
+
+describe("MLS lifecycle inputs", () => {
+  const credential = {
+    bytes: new Uint8Array([1]),
+    deviceId: "device-1",
+    identityId: "user-1",
+    issuedAt: 1_000,
+  };
+
+  test("accepts bounded device, key-package, and state records", () => {
+    expect(() => validateDeviceCredential(credential, 2_000)).not.toThrow();
+    expect(() =>
+      validateKeyPackage(
+        {
+          bytes: new Uint8Array([2]),
+          credential,
+          expiresAt: 3_000,
+          id: "key-package-1",
+          protocol: "MLS-1.0",
+        },
+        2_000,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateConversationState({
+        bytes: new Uint8Array([3]),
+        conversationId: "conversation-1",
+        revision: 0,
+      }),
+    ).not.toThrow();
+  });
+
+  test("rejects expired or structurally empty records", () => {
+    expect(() =>
+      validateDeviceCredential({ ...credential, deviceId: "" }, 2_000),
+    ).toThrow("deviceId");
+    expect(() =>
+      validateKeyPackage(
+        {
+          bytes: new Uint8Array([2]),
+          credential,
+          expiresAt: 2_000,
+          id: "key-package-1",
+          protocol: "MLS-1.0",
+        },
+        2_000,
+      ),
+    ).toThrow("expired");
+    expect(() =>
+      validateConversationState({
+        bytes: new Uint8Array(),
+        conversationId: "conversation-1",
+        revision: 0,
+      }),
+    ).toThrow("must not be empty");
   });
 });
 

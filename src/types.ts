@@ -92,29 +92,172 @@ export type DecryptedMessage = {
   readonly senderCredential: Uint8Array;
 };
 
+export type DeviceCredential = {
+  readonly bytes: Uint8Array;
+  readonly deviceId: string;
+  readonly expiresAt?: number;
+  readonly identityId: string;
+  readonly issuedAt: number;
+};
+
+export type LocalDeviceCredential = DeviceCredential & {
+  /** Opaque provider-owned reference. This is never private key material. */
+  readonly keyHandle: string;
+};
+
+export type CredentialValidation = {
+  readonly identityId: string;
+  readonly status: "invalid" | "revoked" | "valid";
+};
+
+export type AuthenticationService = {
+  issueDeviceCredential(input: {
+    readonly deviceId: string;
+    readonly identityId: string;
+    readonly publicKey: Uint8Array;
+  }): Promise<DeviceCredential>;
+  sameIdentity(
+    left: DeviceCredential,
+    right: DeviceCredential,
+  ): Promise<boolean>;
+  validateDeviceCredential(
+    credential: DeviceCredential,
+  ): Promise<CredentialValidation>;
+};
+
+export type E2EEKeyPackage = {
+  readonly bytes: Uint8Array;
+  readonly credential: DeviceCredential;
+  readonly expiresAt: number;
+  readonly id: string;
+  readonly protocol: string;
+};
+
+export type KeyPackageDirectory = {
+  claim(identityId: string): Promise<E2EEKeyPackage | undefined>;
+  publish(keyPackage: E2EEKeyPackage): Promise<void>;
+  remove(input: {
+    readonly deviceId: string;
+    readonly id: string;
+  }): Promise<void>;
+};
+
+export type DeliveryMessageKind =
+  "application" | "commit" | "proposal" | "welcome";
+
+export type DeliveryMessage = {
+  readonly bytes: Uint8Array;
+  readonly conversationId: string;
+  readonly id: string;
+  readonly kind: DeliveryMessageKind;
+  readonly recipientDeviceId?: string;
+};
+
+export type DeliveryCursor = {
+  readonly deviceId: string;
+  readonly value?: string;
+};
+
+export type DeliveryBatch = {
+  readonly cursor?: string;
+  readonly messages: readonly DeliveryMessage[];
+};
+
+export type DeliveryService = {
+  acknowledge(input: {
+    readonly cursor: string;
+    readonly deviceId: string;
+  }): Promise<void>;
+  receive(cursor: DeliveryCursor): Promise<DeliveryBatch>;
+  send(messages: readonly DeliveryMessage[]): Promise<void>;
+};
+
+export type ConversationState = {
+  readonly bytes: Uint8Array;
+  readonly conversationId: string;
+  readonly revision: number;
+};
+
+export type ConversationStateStore = {
+  load(conversationId: string): Promise<ConversationState | undefined>;
+  remove(conversationId: string, expectedRevision: number): Promise<boolean>;
+  save(input: {
+    readonly expectedRevision?: number;
+    readonly state: ConversationState;
+  }): Promise<boolean>;
+};
+
+export type RecoveryAuthority = {
+  readonly authorityId: string;
+  recover(input: {
+    readonly conversationId: string;
+    readonly wrappedState: Uint8Array;
+  }): Promise<Uint8Array>;
+  wrap(input: {
+    readonly conversationId: string;
+    readonly sealedState: Uint8Array;
+  }): Promise<Uint8Array>;
+};
+
+export type ConversationMember = {
+  readonly credential: DeviceCredential;
+  readonly index: number;
+};
+
+export type MembershipChange = {
+  readonly epoch: number;
+  readonly handshake: readonly ProtectedMessage[];
+  readonly welcomes: readonly {
+    readonly deviceId: string;
+    readonly bytes: Uint8Array;
+  }[];
+};
+
+export type MessagingProcessResult =
+  | {
+      readonly kind: "application";
+      readonly message: DecryptedMessage;
+    }
+  | {
+      readonly epoch: number;
+      readonly kind: "membership-change" | "state-change";
+    };
+
 export type MessagingSession = {
   readonly conversationId: string;
   readonly epoch: number;
-  addMembers(credentials: readonly Uint8Array[]): Promise<ProtectedMessage>;
+  addMembers(keyPackages: readonly E2EEKeyPackage[]): Promise<MembershipChange>;
   close(): Promise<void>;
+  members(): Promise<readonly ConversationMember[]>;
   protect(
     plaintext: Uint8Array,
     authenticatedContext: AuthenticatedContext,
   ): Promise<ProtectedMessage>;
-  process(message: ProtectedMessage): Promise<DecryptedMessage | undefined>;
-  reinitialize(securityMode: SecurityMode): Promise<ProtectedMessage>;
-  removeMembers(credentialIds: readonly string[]): Promise<ProtectedMessage>;
+  process(
+    message: ProtectedMessage,
+  ): Promise<MessagingProcessResult | undefined>;
+  reinitialize(securityMode: SecurityMode): Promise<MembershipChange>;
+  removeMembers(deviceIds: readonly string[]): Promise<MembershipChange>;
+  selfUpdate(): Promise<MembershipChange>;
 };
 
 export type MessagingProvider = E2EEProvider & {
+  createDeviceCredential(input: {
+    readonly deviceId: string;
+    readonly identityId: string;
+  }): Promise<LocalDeviceCredential>;
+  createKeyPackage(input: {
+    readonly credential: LocalDeviceCredential;
+    readonly expiresAt: number;
+  }): Promise<E2EEKeyPackage>;
   createConversation(input: {
     readonly conversationId: string;
-    readonly creatorCredential: Uint8Array;
-    readonly initialMemberCredentials?: readonly Uint8Array[];
+    readonly creatorCredential: LocalDeviceCredential;
+    readonly initialMemberKeyPackages?: readonly E2EEKeyPackage[];
     readonly securityMode: SecurityMode;
   }): Promise<MessagingSession>;
   joinConversation(input: {
-    readonly credential: Uint8Array;
+    readonly credential: LocalDeviceCredential;
     readonly welcome: Uint8Array;
   }): Promise<MessagingSession>;
   restoreConversation(input: {

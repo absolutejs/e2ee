@@ -1,6 +1,6 @@
 {
   "name": "@absolutejs/e2ee",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Provider-neutral E2EE contracts, security modes, assurance manifests, and conformance tools for AbsoluteJS.",
   "type": "module",
   "license": "Apache-2.0",
@@ -36,6 +36,7 @@
   },
   "files": [
     "dist",
+    "CHANGELOG.md",
     "LICENSE",
     "README.md",
     "SECURITY.md"

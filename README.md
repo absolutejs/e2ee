@@ -52,10 +52,16 @@ recommended default.
 
 ## Scope
 
-The first `0.x` line establishes provider capability and assurance contracts,
-security policy, deterministic provider selection, and a shared conformance API.
-MLS engines, native key stores, recovery authorities, transports, conversations,
-and agent exchange are implemented in separate packages and releases.
+The `0.2.x` line adds the application boundaries required around an MLS engine:
+device credentials, KeyPackages, membership changes, delivery, durable
+compare-and-set state, and an explicit recovery authority. These are contracts,
+not hosted services. Implementations remain in provider packages.
+
+MLS deliberately does not define an application's Authentication Service or
+Delivery Service. AbsoluteJS keeps those dependencies visible so a cryptographic
+engine cannot silently become the identity authority, transport, or recovery
+authority. Strict E2EE never receives a `RecoveryAuthority`; managed recovery
+must identify and configure one explicitly.
 
 Public TypeScript contracts use type aliases rather than interfaces so unions,
 intersections, and provider capability composition stay explicit.
