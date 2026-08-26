@@ -227,6 +227,8 @@ export type MessagingProcessResult =
 export type MessagingSession = {
   readonly conversationId: string;
   readonly epoch: number;
+  /** Mode authenticated by the provider's conversation state. */
+  readonly securityMode: SecurityMode;
   addMembers(keyPackages: readonly E2EEKeyPackage[]): Promise<MembershipChange>;
   close(): Promise<void>;
   members(): Promise<readonly ConversationMember[]>;
@@ -257,6 +259,7 @@ export type MessagingProvider = E2EEProvider & {
   }): Promise<MessagingSession>;
   joinConversation(input: {
     readonly credential: LocalDeviceCredential;
+    readonly expectedSecurityMode: SecurityMode;
     readonly welcome: Uint8Array;
   }): Promise<MessagingSession>;
   restoreConversation(input: {

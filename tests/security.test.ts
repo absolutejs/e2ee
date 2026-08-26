@@ -3,6 +3,7 @@ import {
   DEFAULT_SECRET_PROCESSING_MODE,
   E2EEConfigurationError,
   planSecurityModeTransition,
+  requireMessagingSessionMode,
   validateAuthenticatedContext,
   validateConversationState,
   validateDeviceCredential,
@@ -29,6 +30,15 @@ describe("security modes", () => {
     expect(() =>
       planSecurityModeTransition("strict-e2ee", "strict-e2ee"),
     ).toThrow(E2EEConfigurationError);
+  });
+
+  test("rejects a session whose authenticated mode differs", () => {
+    expect(() =>
+      requireMessagingSessionMode(
+        { securityMode: "managed-recovery" },
+        "strict-e2ee",
+      ),
+    ).toThrow("does not match");
   });
 });
 

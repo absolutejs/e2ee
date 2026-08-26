@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- Require messaging sessions to expose their authenticated security mode.
+- Require callers joining a Welcome to provide the expected security mode so
+  providers can reject strict/managed mode substitution.
+
 ## 0.6.0
 
 - Add fail-closed independent-audit evidence bound to exact package versions,

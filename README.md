@@ -68,6 +68,9 @@ Changing modes is not a session mutation. Call
 mode, re-add verified devices, and visibly retire the prior conversation.
 New conversations begin with their creator only; add every other device through
 `addMembers()` so its Welcome message cannot be accidentally discarded.
+Joining a Welcome requires `expectedSecurityMode`, and the returned session
+exposes the mode authenticated by provider state. Callers must reject any
+strict/managed mismatch instead of trusting delivery metadata.
 
 Public TypeScript contracts use type aliases rather than interfaces so unions,
 intersections, and provider capability composition stay explicit.

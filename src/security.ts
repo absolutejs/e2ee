@@ -4,6 +4,7 @@ import type {
   ConversationState,
   DeviceCredential,
   E2EEKeyPackage,
+  MessagingSession,
   SecurityMode,
   SecurityModeTransition,
   SecretProcessingMode,
@@ -28,6 +29,16 @@ export const planSecurityModeTransition = (
     requiresParticipantNotification: true,
     to,
   });
+};
+
+export const requireMessagingSessionMode = (
+  session: Pick<MessagingSession, "securityMode">,
+  expected: SecurityMode,
+): void => {
+  if (session.securityMode !== expected)
+    throw new E2EEConfigurationError(
+      `Messaging session mode ${session.securityMode} does not match required mode ${expected}.`,
+    );
 };
 
 export const validateAuthenticatedContext = (
