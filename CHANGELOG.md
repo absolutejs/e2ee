@@ -23,3 +23,9 @@
 
 - Establish provider-neutral E2EE manifests, security modes, selection, and
   conformance contracts.
+
+# 0.5.0
+
+- Add versioned, immutable provider certification reports and fail-closed policy
+  evaluation for exact releases, runtimes, freshness, scenarios, vectors, and
+  independent implementation claims.

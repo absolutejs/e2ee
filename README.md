@@ -74,6 +74,19 @@ intersections, and provider capability composition stay explicit.
 
 See [SECURITY.md](./SECURITY.md) before relying on this package for protected data.
 
+## Version-bound certification
+
+Provider capability claims and provider certification are separate. A certification
+report binds the provider ID, package name, exact package version, runtime, suite,
+scenarios, implementation identities, vector sources, and an evidence digest.
+`checkE2EECertification()` rejects stale reports, reports for another release or
+runtime, and missing policy claims.
+
+The claims deliberately distinguish shared conformance, known-answer vectors, and
+cross-implementation testing. Passing the MLS Working Group vectors does not by
+itself prove application interoperability: RFC 9750 leaves Authentication Service,
+Delivery Service, identity, and application framing choices to deployments.
+
 ## License
 
 Apache-2.0
