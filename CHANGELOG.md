@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- Replace opaque MLS-state escrow with request-bound recovery grants. Recovery
+  authorities issue and verify authorization proofs but never receive live group
+  state through the core contract.
+- Add an atomic member-replacement primitive for RFC 9750-style state-loss
+  recovery: add the replacement device and remove lost leaves in one MLS epoch.
+
 ## 0.7.0
 
 - Require messaging sessions to expose their authenticated security mode.

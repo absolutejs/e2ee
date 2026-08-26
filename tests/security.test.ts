@@ -8,6 +8,8 @@ import {
   validateConversationState,
   validateDeviceCredential,
   validateKeyPackage,
+  validateRecoveryGrant,
+  validateRecoveryRequest,
 } from "../src";
 
 describe("security modes", () => {
@@ -96,6 +98,64 @@ describe("MLS lifecycle inputs", () => {
         revision: 0,
       }),
     ).toThrow("must not be empty");
+  });
+});
+
+describe("managed recovery grants", () => {
+  const request = {
+    conversationId: "conversation-1",
+    expiresAt: 2_000,
+    id: "request-1",
+    issuedAt: 1_000,
+    lostDeviceIds: ["lost-device"],
+    replacementCredential: {
+      bytes: Uint8Array.of(1),
+      deviceId: "replacement-device",
+      identityId: "alice",
+      issuedAt: 900,
+    },
+    securityMode: "managed-recovery" as const,
+    subjectIdentityId: "alice",
+  };
+
+  test("binds a short-lived grant to a replacement credential request", () => {
+    expect(() => validateRecoveryRequest(request, 1_000, 1_100)).not.toThrow();
+    expect(() =>
+      validateRecoveryGrant(
+        {
+          authorityId: "recovery.example",
+          bytes: Uint8Array.of(2),
+          expiresAt: 1_900,
+          issuedAt: 1_100,
+          requestId: request.id,
+        },
+        request,
+        1_200,
+      ),
+    ).not.toThrow();
+  });
+
+  test("rejects identity substitution and overlong grants", () => {
+    expect(() =>
+      validateRecoveryRequest(
+        { ...request, subjectIdentityId: "mallory" },
+        1_000,
+        1_100,
+      ),
+    ).toThrow("identity");
+    expect(() =>
+      validateRecoveryGrant(
+        {
+          authorityId: "recovery.example",
+          bytes: Uint8Array.of(2),
+          expiresAt: 2_001,
+          issuedAt: 1_100,
+          requestId: request.id,
+        },
+        request,
+        1_200,
+      ),
+    ).toThrow("not bound");
   });
 });
 

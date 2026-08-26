@@ -43,8 +43,9 @@ the highest compatible assurance level.
 
 - `strict-e2ee`: only verified participant devices can decrypt conversation
   history. Losing all verified devices and exports may permanently lose history.
-- `managed-recovery`: clients create recovery material for a visibly identified
-  recovery authority. It is never enabled silently.
+- `managed-recovery`: a visibly identified recovery authority may authorize a
+  new verified device to replace lost device leaves. It is never enabled silently,
+  and the authority does not receive serialized live MLS state through this API.
 
 Sensitive agent exchange additionally declares whether a value is
 `tool-confined`, `endpoint-visible`, or `model-visible`. `tool-confined` is the
@@ -61,7 +62,9 @@ MLS deliberately does not define an application's Authentication Service or
 Delivery Service. AbsoluteJS keeps those dependencies visible so a cryptographic
 engine cannot silently become the identity authority, transport, or recovery
 authority. Strict E2EE never receives a `RecoveryAuthority`; managed recovery
-must identify and configure one explicitly.
+must identify and configure a `RecoveryGrantVerifier` explicitly. Recovery after
+state loss follows RFC 9750's rejoin-and-remove model: bind a short-lived grant to
+the replacement credential, add it, and remove the lost leaves in one commit.
 
 Changing modes is not a session mutation. Call
 `planSecurityModeTransition()`, create a new conversation in the requested

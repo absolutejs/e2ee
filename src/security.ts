@@ -5,6 +5,8 @@ import type {
   DeviceCredential,
   E2EEKeyPackage,
   MessagingSession,
+  RecoveryGrant,
+  RecoveryRequest,
   SecurityMode,
   SecurityModeTransition,
   SecretProcessingMode,
@@ -122,4 +124,67 @@ export const validateConversationState = (state: ConversationState): void => {
       "Conversation state revision must be a non-negative safe integer.",
     );
   }
+};
+
+export const validateRecoveryRequest = (
+  request: RecoveryRequest,
+  maximumTtlMs: number,
+  now = Date.now(),
+): void => {
+  requireIdentifier(request.id, "recovery request id");
+  requireIdentifier(request.conversationId, "conversationId");
+  requireIdentifier(request.subjectIdentityId, "subjectIdentityId");
+  validateDeviceCredential(request.replacementCredential, now);
+  if (
+    request.securityMode !== "managed-recovery" ||
+    request.replacementCredential.identityId !== request.subjectIdentityId
+  )
+    throw new E2EEConfigurationError(
+      "Recovery request mode or replacement identity is invalid.",
+    );
+  const lost = new Set(request.lostDeviceIds);
+  if (
+    lost.size === 0 ||
+    lost.size !== request.lostDeviceIds.length ||
+    request.lostDeviceIds.some((deviceId) => deviceId.trim().length === 0) ||
+    lost.has(request.replacementCredential.deviceId)
+  )
+    throw new E2EEConfigurationError(
+      "Recovery request lost devices must be unique, non-empty, and distinct from the replacement device.",
+    );
+  if (
+    !Number.isSafeInteger(maximumTtlMs) ||
+    maximumTtlMs < 1 ||
+    !Number.isSafeInteger(request.issuedAt) ||
+    !Number.isSafeInteger(request.expiresAt) ||
+    request.issuedAt > now ||
+    request.expiresAt <= now ||
+    request.expiresAt - request.issuedAt > maximumTtlMs
+  )
+    throw new E2EEConfigurationError(
+      "Recovery request timestamps violate policy.",
+    );
+};
+
+export const validateRecoveryGrant = (
+  grant: RecoveryGrant,
+  request: RecoveryRequest,
+  now = Date.now(),
+): void => {
+  requireIdentifier(grant.authorityId, "recovery authority id");
+  requireIdentifier(grant.requestId, "recovery grant request id");
+  if (grant.bytes.length === 0)
+    throw new E2EEConfigurationError("Recovery grant proof must not be empty.");
+  if (
+    grant.requestId !== request.id ||
+    !Number.isSafeInteger(grant.issuedAt) ||
+    !Number.isSafeInteger(grant.expiresAt) ||
+    grant.issuedAt < request.issuedAt ||
+    grant.issuedAt > now ||
+    grant.expiresAt <= now ||
+    grant.expiresAt > request.expiresAt
+  )
+    throw new E2EEConfigurationError(
+      "Recovery grant is expired or not bound to the request.",
+    );
 };

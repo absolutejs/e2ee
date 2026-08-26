@@ -188,16 +188,37 @@ export type ConversationStateStore = {
   }): Promise<boolean>;
 };
 
-export type RecoveryAuthority = {
+export type RecoveryRequest = {
+  readonly conversationId: string;
+  readonly expiresAt: number;
+  readonly id: string;
+  readonly issuedAt: number;
+  readonly lostDeviceIds: readonly string[];
+  readonly replacementCredential: DeviceCredential;
+  readonly securityMode: "managed-recovery";
+  readonly subjectIdentityId: string;
+};
+
+export type RecoveryGrant = {
   readonly authorityId: string;
-  recover(input: {
-    readonly conversationId: string;
-    readonly wrappedState: Uint8Array;
-  }): Promise<Uint8Array>;
-  wrap(input: {
-    readonly conversationId: string;
-    readonly sealedState: Uint8Array;
-  }): Promise<Uint8Array>;
+  /** Opaque signed or MAC-authenticated proof over the complete request. */
+  readonly bytes: Uint8Array;
+  readonly expiresAt: number;
+  readonly issuedAt: number;
+  readonly requestId: string;
+};
+
+export type RecoveryGrantVerifier = {
+  readonly authorityId: string;
+  verify(input: {
+    readonly grant: RecoveryGrant;
+    readonly request: RecoveryRequest;
+  }): Promise<boolean>;
+};
+
+export type RecoveryAuthority = RecoveryGrantVerifier & {
+  /** Issuance is expected to enforce the authority's approval ceremony. */
+  issue(request: RecoveryRequest): Promise<RecoveryGrant>;
 };
 
 export type ConversationMember = {
@@ -240,6 +261,10 @@ export type MessagingSession = {
     message: ProtectedMessage,
   ): Promise<MessagingProcessResult | undefined>;
   removeMembers(deviceIds: readonly string[]): Promise<MembershipChange>;
+  replaceMembers(input: {
+    readonly add: readonly E2EEKeyPackage[];
+    readonly removeDeviceIds: readonly string[];
+  }): Promise<MembershipChange>;
   selfUpdate(): Promise<MembershipChange>;
 };
 
