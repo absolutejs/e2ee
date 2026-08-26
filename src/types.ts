@@ -120,9 +120,10 @@ export type AuthenticationService = {
     left: DeviceCredential,
     right: DeviceCredential,
   ): Promise<boolean>;
-  validateDeviceCredential(
-    credential: DeviceCredential,
-  ): Promise<CredentialValidation>;
+  validateDeviceCredential(input: {
+    readonly credential: DeviceCredential;
+    readonly publicKey: Uint8Array;
+  }): Promise<CredentialValidation>;
 };
 
 export type E2EEKeyPackage = {
@@ -252,7 +253,6 @@ export type MessagingProvider = E2EEProvider & {
   createConversation(input: {
     readonly conversationId: string;
     readonly creatorCredential: LocalDeviceCredential;
-    readonly initialMemberKeyPackages?: readonly E2EEKeyPackage[];
     readonly securityMode: SecurityMode;
   }): Promise<MessagingSession>;
   joinConversation(input: {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Bind Authentication Service validation to the MLS signature public key.
+- Require initial members to be added through `addMembers()` so every caller
+  receives and delivers the resulting Welcome messages.
+
 ## 0.3.0
 
 - Require security-mode transitions to create a new conversation instead of

@@ -1,6 +1,6 @@
 {
   "name": "@absolutejs/e2ee",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Provider-neutral E2EE contracts, security modes, assurance manifests, and conformance tools for AbsoluteJS.",
   "type": "module",
   "license": "Apache-2.0",

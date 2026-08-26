@@ -66,6 +66,8 @@ must identify and configure one explicitly.
 Changing modes is not a session mutation. Call
 `planSecurityModeTransition()`, create a new conversation in the requested
 mode, re-add verified devices, and visibly retire the prior conversation.
+New conversations begin with their creator only; add every other device through
+`addMembers()` so its Welcome message cannot be accidentally discarded.
 
 Public TypeScript contracts use type aliases rather than interfaces so unions,
 intersections, and provider capability composition stay explicit.
